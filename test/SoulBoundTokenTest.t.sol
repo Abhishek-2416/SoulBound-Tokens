@@ -35,6 +35,9 @@ contract TestSoulBoundToken is Test{
         assertEq(token.tokenURI(0) ,"nft");
     }
 
+    function testFailWhenAddressZeroCallsIt() public{
+        token.safeMint(address(0),"nft");
+    }
 
     function testburnCanBeCalledOnlyByOwner() public{
         token.safeMint(address(0x1),"nft");
@@ -56,4 +59,11 @@ contract TestSoulBoundToken is Test{
         token.revoke(0);
         assert(token.balanceOf(address(0x1)) == 0);
     }
+
+    function testFailRevokeWhenNotCalledByOwner() public{
+        vm.prank(address(0x1));
+        token.revoke(0);
+    }
+
+    
 }

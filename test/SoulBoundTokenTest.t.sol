@@ -24,4 +24,5 @@ contract TestSoulBoundToken is Test{
         token.burn(0);
         assert(token.ownerOf(token.getTokenCount()) == address(0));
     }
+    
 }

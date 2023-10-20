@@ -4,66 +4,131 @@ pragma solidity ^0.8.4;
 import {Test} from "forge-std/Test.sol";
 import {CollegeDAO} from "../src/SoulboundToken.sol";
 
-contract TestSoulBoundToken is Test{
-    CollegeDAO token;
+contract TestToken is Test{
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
 
-    function setUp() external{
-        token = new CollegeDAO();
+    CollegeDAO public token;
+    //Making test addresses
+    address bob = makeAddr("bob");
+    address alice = makeAddr("alice");
+
+    uint256 private constant STARTING_BALANCE = 100 ether;
+
+    function setUp() external {
     }
 
-    function testIfTokenIdIncerementInSafeMint() public{
-        token.safeMint(address(0x1),"nft");
+    function testIntialBalanceShouldBeZero() public {
+        assertEq(token.balanceOf(bob),0);
+    }
+
+    function testNameIsCorrect() public view { 
+        string memory expectedName = "CollegeDAO";
+        string memory actualName = token.name();
+
+        assert(keccak256(abi.encodePacked(expectedName)) == keccak256(abi.encodePacked(actualName)));
+    }
+
+    function testSymbolIsCorrect() public view {
+        string memory expectedSymbol = "JNTUH";
+        string memory actualSymbol = token.symbol();
+
+        assert(keccak256(abi.encodePacked(expectedSymbol)) == keccak256(abi.encodePacked(actualSymbol)));
+    }
+
+    function testSafeMintCanOnlyBeCalledByTheOwner() public {
+        vm.prank(bob);
+        vm.expectRevert();
+        token.safeMint(alice,"nft");
+    }
+
+    function testOnePersonCannotHaveMoreThanOneNft() public {
+        vm.prank(msg.sender);
+        token.safeMint(bob,"nft");
+        assertEq(token.getTokenCount(),1);
+        
+        vm.prank(msg.sender);
+        vm.expectRevert();
+        token.safeMint(bob,"nft2");
+    }
+
+    function testIfTheTokenIdCounterWorks() public {
+        vm.prank(msg.sender);
+        token.safeMint(bob,"nft");
         assertEq(token.getTokenCount(),1);
 
-        token.safeMint(address(0x2),"nft2");
+        vm.prank(msg.sender);
+        token.safeMint(alice,"nft1");
         assertEq(token.getTokenCount(),2);
-
-        // vm.expectRevert();
-        assert(token.getTokenCount() != 3);
     }
 
-    function testSafeMintInSafeMint() public{
-        token.safeMint(address(0x1),"nft");
-        assertEq(token.ownerOf(0),address(0x1));
-        assertEq(token.getTokenCount(),1);
+    function testTheSafeMintFunctionWorks() public {
+        assertEq(token.balanceOf(bob),0);
+
+        vm.prank(msg.sender);
+        token.safeMint(bob,"nft");
+        assertEq(token.balanceOf(bob),1);
+        assertEq(token.ownerOf(0),bob);
     }
 
-    function testSetTokenURIInSafeMint() public{
-        token.safeMint(address(0x1),"nft");
-        assertEq(token.ownerOf(0),address(0x1));
-        assertEq(token.getTokenCount(),1);
-        assertEq(token.tokenURI(0) ,"nft");
+    function testTokenURIWhenSafeMint() public {
+        vm.prank(msg.sender);
+        token.safeMint(bob,"nft");
+
+        assert(keccak256(abi.encodePacked(token.tokenURI(0))) == keccak256(abi.encodePacked("nft")));
     }
 
-    function testFailWhenAddressZeroCallsIt() public{
-        token.safeMint(address(0),"nft");
-    }
+    function testBurnCanBeOnlyCalledByTheOwnerOfToken() public {
+        vm.prank(msg.sender);
+        token.safeMint(bob,"nft");
 
-    function testburnCanBeCalledOnlyByOwner() public{
-        token.safeMint(address(0x1),"nft");
-        vm.prank(address(0x1));
+        vm.prank(alice);
+        vm.expectRevert();
+        token.burn(0);
+
+        vm.prank(msg.sender);
+        vm.expectRevert();
         token.burn(0);
     }
 
-    function testBurntoken() public{
-        token.safeMint(address(0x1),"nft");
-        assert(token.getTokenCount() == 1);
-        vm.prank(address(0x1));
+    function testBurnWorks() public {
+        vm.prank(msg.sender);
+        token.safeMint(bob,"nft");
+        assertEq(token.balanceOf(bob),1);
+        assertEq(token.ownerOf(0),bob);
+
+        vm.prank(bob);
         token.burn(0);
-        assert(token.balanceOf(address(0x1)) == 0);
+        assertEq(token.balanceOf(bob),0);
     }
 
-    function testRevoke() public {
-        token.safeMint(address(0x1),"nft");
-        vm.prank(address(this));
+    function testRevokeCanBeCalledOnlyByOwner() public {
+        vm.prank(msg.sender);
+        token.safeMint(bob,"nft");
+        assertEq(token.balanceOf(bob),1);
+        assertEq(token.ownerOf(0),bob);
+
+        vm.prank(bob);
+        vm.expectRevert();
         token.revoke(0);
-        assert(token.balanceOf(address(0x1)) == 0);
     }
 
-    function testFailRevokeWhenNotCalledByOwner() public{
-        vm.prank(address(0x1));
+    function testRevokeWorks() public {
+        vm.prank(msg.sender);
+        token.safeMint(bob,"nft");
+        assertEq(token.balanceOf(bob),1);
+        assertEq(token.ownerOf(0),bob);
+
+        vm.prank(msg.sender);
         token.revoke(0);
+        assertEq(token.balanceOf(bob),0);
     }
 
-    
+    function testTransferEventWhenMint() public {
+        vm.prank(msg.sender);
+        vm.recordLogs();
+        token.safeMint(bob,"nft");
+        
+    }
+
+
 }
